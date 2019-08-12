@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Iterator</title>
+    <style>
+        body{
+            background: #eaeaea; font-size:16px; line-height:1.5;
+        }
+        i {
+            font-style: normal;
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+
+<body>
+    
+
+<ul>
+
+    <li>
+        <a href="#1">Iterator(迭代器)概念</a>
+    </li>
+
+    <li>
+        <a href="#2">可迭代对象</a>
+    </li>
+
+    <li>
+        <a href="#3">具备Iterator接口的对象的使用场景</a>
+    </li>
+
+    <li>
+        <a href="#4">原生具备Iterator接口的对象</a>
+    </li>
+
+    <li>
+        <a href="#5">遍历器对象的 return()，throw()</a>
+    </li>
+
+</ul>
+
+<a href="javascript:void(0)">参考资料</a><br/>
+
+
+<a href="http://es6.ruanyifeng.com/#docs/iterator">http://es6.ruanyifeng.com/#docs/iterator</a><br/>
+
+<a href="https://github.com/yueshuiniao/blog/issues/2">https://github.com/yueshuiniao/blog/issues/2</a><br/>
+
+<a href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Iteration_protocols">https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Iteration_protocols</a><br/>
+
+
+
+    
+    <h3 id="1">一、Iterator(迭代器)概念</h3>
+    <pre>
+        * 1. 什么是Iterator
+            Iterator是满足迭代器协议的对象 即 对象+迭代器协议。
+        * 2. 什么是迭代器协议
+            迭代器协议定义了一种标准的方式来产生一个有限或无限序列的值，并且当所有值都已经被迭代后就会返回一个默认值。
+            当一个对象只有满足下述条件才会被认为是一个迭代器：
+            它实现了一个 next() 的方法并且拥有以下含义：
+            next:返回一个对象的无参函数，被返回对象拥有两个属性：
+                (1) done (boolean):
+                    true:迭代器已经超过了可迭代次数。这种情况下,value的值可以被省略。
+                    如果迭代器可以产生序列中的下一个值，则为 false。这等效于没有指定done这个属性。
+                (2) value 
+                    迭代器返回的任何 JavaScript 值。
+                    done 为 true 时可省略。
+            <i>(注：next 方法必须要返回一个对象，该对象有两个必要的属性： done和value，
+                如果返回一个非对象值（比如false和undefined) 会展示一个 TypeError ("iterator.next() returned a non-object value") 的错误)</i>
+
+        //遍历器生成函数
+        function createIterator(items) {
+            let i = 0;
+            return {
+                next: function () {
+                    let done = (i >= items.length);
+                    let value = !done ? items[i++] : undefined;
+                    return {
+                        done: done,
+                        value: value
+                    };
+                },
+                [Symbol.iterator]:function(){
+                    return this
+                }
+            };
+        }
+        const iterator = createIterator([1, 2, 3, 4])
+        console.log(...iterator)
+        console.log(iterator.next())
+        console.log(iterator.next())
+        console.log(iterator.next())
+        console.log(iterator.next())
+        console.log(iterator.next())
+        //原生遍历器
+        const arr=[1,2,3];
+        const arrIterator=arr[Symbol.iterator]();
+        console.log(...arrIterator)
+        console.log(arrIterator.next())
+        console.log(arrIterator.next())
+        console.log(arrIterator.next())
+        console.log(arrIterator.next())
+    </pre>
+    <script>
+        //遍历器生成函数
+        // function createIterator(items) {
+        //     let i = 0;
+        //     return {
+        //         next: function () {
+        //             let done = (i >= items.length);
+        //             let value = !done ? items[i++] : undefined;
+        //             return {
+        //                 done: done,
+        //                 value: value
+        //             };
+        //         },
+        //         [Symbol.iterator]: function () {
+        //             return this
+        //         }
+        //     };
+        // }
+        // const iterator = createIterator([1, 2, 3, 4])
+        // console.log(...iterator)
+        // console.log(iterator.next())
+        // console.log(iterator.next())
+        // console.log(iterator.next())
+        // console.log(iterator.next())
+        // console.log(iterator.next())
+        // //原生遍历器
+        // const arr=[1,2,3];
+        // const arrIterator=arr[Symbol.iterator]();
+        // console.log(...arrIterator)
+        // console.log(arrIterator.next())
+        // console.log(arrIterator.next())
+        // console.log(arrIterator.next())
+        // console.log(arrIterator.next())
+    </script>
+
+    <h3 id="2">二、可迭代对象</h3>
+    <pre>
+        * 1. 什么是可迭代对象
+            可迭代协议允许JS对象去定义或定制他们的迭代行为
+        * 2. 如何变成可迭代对象
+            对象必须实现iterator方法 即 在这个对象或他的原型链上必须具有Symbol.iterator属性，
+            该属性是一个无参函数，返回一个满足迭代器协议（即 具有next方法的对象）的对象
+        * 3. 不可能知道一个特定的对象是否实现了迭代器协议，然而创造一个同时满足迭代器协议和可迭代协议的对象是很 容易的（就像下面的example所示）。
+            这样做允许一个迭代器能被不同希望迭代的语法方式所使用。 
+            因此，很少只实现迭代器协议而不实现可迭代协议。
+        * 4. 如果Symbol.iterator方法对应的不是遍历器生成函数（即会返回一个遍历器对象），解释引擎将会报错。
+
+        //重写entries遍历器函数
+        const someArray = [1, 5, 7];
+        someArray[Symbol.iterator] = function entries() {
+            const that = this;
+            let index = 0;
+            return {
+                next: function () {
+                    let done = (index >= that.length);
+                    let value = !done ? [index, that[index++]] : undefined;
+                    return {
+                        done: done,
+                        value: value
+                    }
+                }
+            }
+        }
+        const someArrayEntries = someArray.entries();
+        console.log(someArrayEntries.next())
+        console.log(someArrayEntries.next())
+        console.log(someArrayEntries.next())
+        console.log(someArrayEntries.next())
+
+        //自定义遍历器
+        const someArray2=new Array(1,2,3);
+        console.log(someArray2.__proto__)
+        someArray2.__proto__.customIterator=function(){
+            const that=this;
+            let index=0;
+            return {
+                next:function(){
+                    let done=index>=that.length;
+                    let value=done?undefined:that[index++]
+                    return {
+                        value:value,
+                        done:done
+                    }
+                },
+                [Symbol.iterator]:function(){
+                    return this;
+                }
+            }
+        }
+        const customIterator=someArray2.customIterator()
+        console.log(...customIterator)
+    </pre>
+    <script>
+        //重写entries遍历器函数
+        // const someArray = [1, 5, 7];
+        // someArray[Symbol.iterator] = function entries() {
+        //     const that = this;
+        //     let index = 0;
+        //     return {
+        //         next: function () {
+        //             let done = (index >= that.length);
+        //             let value = !done ? [index, that[index++]] : undefined;
+        //             return {
+        //                 done: done,
+        //                 value: value
+        //             }
+        //         }
+        //     }
+        // }
+        // const someArrayEntries = someArray.entries();
+        // console.log(someArrayEntries.next())
+        // console.log(someArrayEntries.next())
+        // console.log(someArrayEntries.next())
+        // console.log(someArrayEntries.next())
+
+        // //自定义遍历器
+        // const someArray2 = new Array(1, 2, 3);
+        // console.log(someArray2.__proto__)
+        // someArray2.__proto__.customIterator = function () {
+        //     const that = this;
+        //     let index = 0;
+        //     return {
+        //         next: function () {
+        //             let done = index >= that.length;
+        //             let value = done ? undefined : that[index++]
+        //             return {
+        //                 value: value,
+        //                 done: done
+        //             }
+        //         },
+        //         [Symbol.iterator]: function () {
+        //             return this;
+        //         }
+        //     }
+        // }
+        // const customIterator = someArray2.customIterator()
+        // console.log(...customIterator)
+    </script>
+
+    <h3 id="3">三、具备Iterator接口的对象的使用场景</h3>
+    <pre>
+        * 1. for...of
+        * 2. 解构赋值
+        * 3. 拓展运算符
+        * 4. yield*
+        * 5. 由于数组的遍历会调用遍历器接口，所以任何接受数组作为参数的场合，其实都调用了遍历器接口。
+            例如
+            Array.from()
+            Map(), Set(), WeakMap(), WeakSet()（比如new Map([['a',1],['b',2]])）
+            Promise.all()
+            Promise.race()
+
+        //for...of
+        let arr = [1, 2, 3];
+        for (let item of arr) {
+            console.log(item)
+        }
+        //解构赋值
+        const [a, b, c] = new Set([...arr])
+        console.log(a, b, c);
+        //拓展运算符
+        console.log([...arr, 4])
+        //yield*
+        function* gen() {
+            yield*[1, 2, 3, 4]
+        }
+        const genIterator = gen()
+        console.log(genIterator.next())
+        console.log(genIterator.next())
+    </pre>
+    <script>
+        // //for...of
+        // let arr = [1, 2, 3];
+        // for (let item of arr) {
+        //     console.log(item)
+        // }
+        // //解构赋值
+        // const [a, b, c] = new Set([...arr])
+        // console.log(a, b, c);
+        // //拓展运算符
+        // console.log([...arr, 4])
+        // //yield*
+        // function* gen() {
+        //     yield*[1, 2, 3, 4]
+        // }
+        // const genIterator = gen()
+        // console.log(genIterator.next())
+        // console.log(genIterator.next())
+    </script>
+
+    <h3 id="4">四、原生具备Iterator接口的对象</h3>
+    <pre>
+        * 1. Array
+        * 2. Map
+        * 3. Set
+        * 4. TypedArray(类数组对象,存在数值建名和length属性)
+        * 5. 函数的 arguments 对象
+        * 6. NodeList 对象
+    </pre>
+    <script>
+
+    </script>
+
+    <h3 id="5">五、遍历器对象的 return()，throw()</h3>
+    <pre>
+        * 1. 遍历器对象除了具有next放法，还可以具有return和throw方法，next方法是必须的，return和throw方法是可选的
+        * 2. return方法的使用场景，for...of方法在提前突出时（报错或break）会进入return方法，如果在退出循环前想进行某些操作可以部署return方法
+
+        function generator(arr) {
+            let index = 0;
+            return {
+                next: function () {
+                    let done = index >= arr.length;
+                    let value = done ? undefined : arr[index++];
+                    return {
+                        value: value,
+                        done: done
+                    }
+                },
+                return: function () {
+                    console.log("break")
+                    return {
+                        done: true
+                    }
+                },
+                throw:function(){
+                    console.log("throw")
+                    return {
+                        done: true
+                    }
+                },
+                [Symbol.iterator]: function () {
+                    return this;
+                }
+            }
+        }
+
+        const genIterator = generator([1, 2, 3]);
+        for(let item of genIterator){
+            console.log(item)
+            break;
+        }
+
+        for(let item of genIterator){
+            console.log(item)
+            throw new Error();
+        }
+        
+    </pre>
+    <script>
+        function generator(arr) {
+            let index = 0;
+            try{
+
+            }catch(err){
+                console.log(err)
+            }
+            return {
+                next: function () {
+                    let done = index >= arr.length;
+                    let value = done ? undefined : arr[index++];
+                    return {
+                        value: value,
+                        done: done
+                    }
+                },
+                return: function () {
+                    console.log("break")
+                    return {
+                        done: true
+                    }
+                },
+                [Symbol.iterator]: function () {
+                    return this;
+                }
+            }
+        }
+
+        const genIterator = generator([1, 2, 3]);
+        for(let item of genIterator){
+            console.log(item)
+            break;
+        }
+        for(let item of genIterator){
+            console.log(item)
+            throw new Error("叭叭叭");
+        }
+       
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,16 @@
+
+
+<ul>
+@@for(var i = 0; i < navArr.length; i++){
+    <li>
+        <a href="#`+(i+1)+`">`+navArr[i]+`</a>
+    </li>
+}
+</ul>
+
+<a href="javascript:void(0)">参考资料</a><br/>
+@@if(docsArr){
+@@for(var i = 0; i < docsArr.length; i++){
+<a href="`+docsArr[i]+`">`+docsArr[i]+`</a><br/>
+}
+}

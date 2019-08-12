@@ -1,0 +1,1067 @@
+@@include('../template/header.html',{
+    "title": "Generator"
+})
+
+<body>
+    @@include('../template/nav.html',{
+        "navArr":[
+            "Generator(生成器)概念",
+            "yield 表达式",
+            "Generator与Iterator的关系",
+            "next方法的参数",
+            "for...of和generator",
+            "Generator.prototype.throw()",
+            "Generator.prototype.return()",
+            "yield* 表达式",
+            "Generator 函数的this",
+            "Generator 函数的异步应用"
+        ],
+        "docsArr":[
+            "https://juejin.im/pin/5d3290fbe51d456cecc49198"
+        ]
+    })
+    
+
+    <h3 id="1">一、Generator(生成器)概念</h3>
+    <pre>
+        * 1. Generator是es6提供的一种异步编程解决方案
+        * 2. Generator(生成器)是由generator function(function* ())返回的，且满足迭代器和可迭代协议
+        * 3. Generator内部封装了多种状态，可以将其理解为状态机
+        * 4. Generator有两个主要特征：
+            (1) function关键字与函数名之间有*分割;
+            (2) 函数体内部使用yield(产出)表达式，定义不同的内部状态
+        * 5. Generator函数的调用和普通函数一样，但是不同的是Generator调用并不会执行，而是返回一个指向内部状态的指针对象（即 迭代器对象）
+        * 6. Generator函数是分段执行的，yield表达式是暂停执行的标记，必须调用Generator返回的迭代器的next方法，切换Generator的内部指针指向，
+            每次调用next()方法会从Generator的头部或上一次yield的地方开始执行（即 next具有恢复执行的作用）
+
+        function* generator () {
+            yield 1;
+            yield 2;
+            yield 3;
+            return 4;
+        }
+
+        const gen=generator();
+        <i>//具有next return throw三个方法，即迭代器具有的三个方法，且内部部署了[Symbol.iterator]可迭代接口</i>
+        console.log(generator.prototype)
+        <i>//并没有立即执行返回一个生成器函数，且满足迭代器和可迭代协议</i>
+        console.log(gen)
+        <i>//部署了可迭代接口</i>
+        console.log(gen[Symbol.iterator]())
+        <i>//true</i>
+        console.log(gen[Symbol.iterator]()===gen)
+        <i>//{value:1,done:false}</i>
+        
+        <i>//第一次调用，Generator开始执行，直到遇到第一个yield为止，此时迭代器的next方法返回一个对象，其value属性对应yield表达式的值，done属性为false标识还没结束</i>
+        console.log(gen.next())//{value:1,done:false}
+        <i>//第二次调用，Generator从上次yield暂停的地方开始执行，一直到下一个yield时暂停，此时next的value为当前yield表达式的值，------</i>
+        console.log(gen.next())//{value:2,done:false}
+        <i>//第三次调用，---------</i>
+        console.log(gen.next())//{value:3,done:false}
+        <i>//第四次调用，Generator从上次yield一直执行到return语句，next的value值为return返回的值 此时done为true 表示执行结束，此时的return会使迭代器进入到自身的return方法中，
+            如果没有return语句则会继续执行一次迭代器value为undefined，done为true</i>
+        console.log(gen.next())//{value:4,done:true}
+        <i>//return语句后的yield不会被执行</i>
+        console.log(gen.next())//{value:undefined,done:true}
+
+        for(let item of gen){
+            console.log(item)//2,3
+            break;
+        }
+    </pre>
+    <script>
+        // function* generator () {
+        //     yield 1;
+        //     yield 2;
+        //     yield 3;
+        //     return 4;
+        //     yield ;
+        // }
+
+        // const gen=generator();
+        // console.log(generator.prototype)//具有next return throw三个方法，即迭代器具有的三个方法，且内部部署了[Symbol.iterator]可迭代接口
+        // console.log(gen)//并没有立即执行返回一个生成器函数，且满足迭代器和可迭代协议
+        // console.log(gen[Symbol.iterator]())//部署了可迭代接口
+        // console.log(gen[Symbol.iterator]()===gen)//true
+
+        // //第一次调用，Generator开始执行，知道遇到第一个yield为止，此时迭代器的next方法返回一个对象，其value属性对应yield表达式的值，done属性为false标识还没结束
+        // console.log(gen.next())//{value:1,done:false}
+        // //第二次调用，Generator从上次yield天刚下的地方开始执行，一直到下一个yield时暂停，此时next的value为当前yield表达式的值，------
+        // console.log(gen.next())//{value:2,done:false}
+        // //第三次调用，---------
+        // console.log(gen.next())//{value:3,done:false}
+        // //第四次调用，Generator从上次yield一直执行到return语句，next的value值为return返回的值 此时done为true 表示执行结束，此时的return会使迭代器进入到自身的return方法中，
+        // //如果没有return语句则会继续执行一次迭代器value为undefined，done为true
+        // console.log(gen.next())//{value:4,done:true}
+        // //return语句后的yield不会被执行
+        // console.log(gen.next())//{value:undefined,done:true}
+
+        // for(let item of gen){
+        //     console.log(item)//2,3
+        //     break;
+        // }
+    </script>
+
+    <h3 id="2">二、yield 表达式</h3>
+    <pre>
+        * 1. Generator返回的迭代器对象只有在调用next方法时才会执行，实现了可暂停执行的函数，而yield就是这种暂停执行的标志
+        * 2. yield表达式后面的表达式，只有当next指向该yield时才会被执行
+        * 3. Generator可以不使用yield表达式，这时他将变为一个暂缓执行的函数
+        * 4. yield表达式只能用在Generator函数里面否则会报错
+        * 5. yield表达式如果用在另一个表达式里面，必须放在括号里面
+        * 6. yield用作函数参数或放在赋值表达式的右边可以不用放在括号里边
+        * 7. yield表达式本身没有返回值，或者说总是返回undefined
+
+        function* generator() {
+            yield 1;
+            console.log(1)
+            return 2;
+        }
+        <i>//此时函数内部未执行</i>
+        const gen = generator();
+        <i>//执行至第一个yield表达式，返回{value:1,done:false}，暂停，不会执行alert</i>
+        console.log(gen.next());
+        <i>//执行至return，先执行alert，然后返回 {value:2,done:true}，执行结束</i>
+        console.log(gen.next());
+
+        <i>//可以不使用yield 表达式 但是会被暂缓执行</i>
+        function* generator2() {
+            console.log("暂缓执行")
+        }
+        const gen2 = generator2()
+        gen2.next();
+
+        <i>//此处报错</i>
+        // (function () {  
+        //     yield 1;
+        // })()
+
+        function* generator3() {
+            yield 1;
+            console.log("yield 2" + (yield 2))
+            console.log("yield 4",yield 4)
+            const dede=yield 5;
+            console.log('dede',dede)
+            yield 3;
+        }
+        const gen3 = generator3()
+        <i>//{value:1,done:false}</i>
+        console.log(gen3.next())
+        <i>//用在另一个表达式必须使用括号，此时console.log不会打印 但会有next返回值</i>
+        console.log(gen3.next())
+        <i>//用作函数参数，不用使用括号</i>
+        console.log(gen3.next())
+        <i>//复制表达式不需要括号</i>
+        console.log(gen3.next())
+        console.log(gen3.next())
+    </pre>
+    <script>
+        // function* generator() {
+        //     yield 1;
+        //     console.log(1)
+        //     return 2;
+        // }
+        // //此时函数内部未执行
+        // const gen = generator();
+        // //执行至第一个yield表达式，返回{value:1,done:false}，暂停，不会执行alert
+        // console.log(gen.next());
+        // //执行至return，先执行alert，然后返回 {value:2,done:true}，执行结束
+        // console.log(gen.next());
+
+        // //可以不使用yield 表达式 但是会被暂缓执行
+        // function* generator2() {
+        //     console.log("暂缓执行")
+        // }
+        // const gen2 = generator2()
+        // gen2.next();
+
+        // //此处报错
+        // // (function () {  
+        // //     yield 1;
+        // // })()
+
+        // function* generator3() {
+        //     yield 1;
+        //     console.log("yield 2" + (yield 2))
+        //     console.log("yield 4", yield 4)
+        //     const dede = yield 5;
+        //     console.log('dede', dede)
+        //     yield 3;
+        // }
+        // const gen3 = generator3()
+        // //{value:1,done:false}
+        // console.log(gen3.next())
+        // //用在另一个表达式必须使用括号，此时console.log不会打印 但会有next返回值
+        // console.log(gen3.next())
+        // //用作函数参数，不用使用括号
+        // console.log(gen3.next())
+        // //复制表达式不需要括号
+        // console.log(gen3.next())
+        // console.log(gen3.next())
+    </script>
+
+    <h3 id="3">三、Generator与Iterator的关系</h3>
+    <pre>
+        * 1. Generator部署了Symbol.iterator接口所以他满足可迭代协议，同时他会返回一个具有next方法的迭代器对象，说明他满足迭代器协议。
+        * 2. Generator 函数执行后，返回一个遍历器对象。该对象本身也具有Symbol.iterator属性，执行后返回自身
+
+        <i>//说明generator是一个迭代器生成函数</i>
+        const iteratorObj = {}
+        iteratorObj[Symbol.iterator] = function* () {
+            yield 1;
+            yield 2;
+            yield 3;
+        }
+        console.log(...iteratorObj)
+
+        <i>//返回一个迭代器对象</i>
+        function* gen() {
+
+        }
+        const generator=gen()
+        console.log(generator[Symbol.iterator]()===generator)//true
+
+        <i>//即是迭代器，也是迭代器生成函数 上一步为什么会想等</i>
+        const Iterator = {
+            next: function () {
+                return {
+                    value: 0,
+                    done: false
+                }
+            },
+            [Symbol.iterator]: function () {
+                return this;
+            }
+        }
+    </pre>
+    <script>
+        // //说明generator是一个迭代器生成函数
+        // const iteratorObj = {}
+        // iteratorObj[Symbol.iterator] = function* () {
+        //     yield 1;
+        //     yield 2;
+        //     yield 3;
+        // }
+        // console.log(...iteratorObj)
+
+        // //返回一个迭代器对象
+        // function* gen() {
+
+        // }
+        // const generator=gen()
+        // console.log(generator[Symbol.iterator]()===generator)
+
+        // //即是迭代器，也是迭代器生成函数 上一步为什么会想等
+        // const Iterator = {
+        //     next: function () {
+        //         return {
+        //             value: 0,
+        //             done: false
+        //         }
+        //     },
+        //     [Symbol.iterator]: function () {
+        //         return this;
+        //     }
+        // }
+    </script>
+
+    <h3 id="4">四、next方法的参数</h3>
+    <pre>
+        * 1. yield 方法本身没有返回值（返回undefined）,next方法可以接受一个参数，该参数会被当作上一个yield的返回值
+        * 2. 第一次调用next方法，传递的参数时无效的，V8 引擎直接忽略第一次使用next方法时的参数
+
+        <i> //这是一个说明的例子，需要注意一点，即 当调用b.next(12)时为什么可以拿到y的值，一版理解的流程是在调用第一个next时y表达式已经完成了计算，
+            实则并非如此 我们在调用第二个next时也就是将指针切换到第二个yield时 y表达式才会被执行</i>
+        function* foo(x) {
+            var y = 2 * (yield(x + 1));
+            var z = yield(y / 3);
+            return (x + y + z);
+        }
+
+        var a = foo(5);
+        a.next() // Object{value:6, done:false}
+        a.next() // Object{value:NaN, done:false}
+        a.next() // Object{value:NaN, done:true}
+
+        var b = foo(5);
+        b.next() // { value:6, done:false }
+        b.next(12) // { value:8, done:false }
+        b.next(13) // { value:42, done:true }
+
+        <i>//如果需要第一次执行next时参数就生效，需要处理一下，思想就是内部先调用一次</i>
+        function wrapper(generatorFun){
+            return function(...args){
+                const gen=generatorFun(...args);
+                gen.next();
+                return gen;
+            }
+        }
+        const gen=wrapper(function* (...args){
+            console.log(...args)
+            console.log(`你好啊，${yield}`)
+        })
+        gen("小明").next("丹尼")
+    </pre>
+    <script>
+        // //这是一个说明的例子，需要注意一点，即 当调用b.next(12)时为什么可以拿到y的值，一版理解的流程是在调用第一个next时y表达式已经完成了计算，
+        // //实则并非如此 我们在调用第二个next时也就是将指针切换到第二个yield时 y表达式才会被执行
+        // function* foo(x) {
+        //     var y = 2 * (yield(x + 1));
+        //     var z = yield(y / 3);
+        //     return (x + y + z);
+        // }
+
+        // var a = foo(5);
+        // a.next() // Object{value:6, done:false}
+        // a.next() // Object{value:NaN, done:false}
+        // a.next() // Object{value:NaN, done:true}
+
+        // var b = foo(5);
+        // b.next() // { value:6, done:false }
+        // b.next(12) // { value:8, done:false }
+        // b.next(13) // { value:42, done:true }
+
+        // //如果需要第一次执行next时参数就生效，需要处理一下
+        // function wrapper(generatorFun){
+        //     return function(...args){
+        //         const gen=generatorFun(...args);
+        //         gen.next();
+        //         return gen;
+        //     }
+        // }
+        // const gen=wrapper(function* (){
+        //     console.log(...arguments)
+        //     console.log(`你好啊，${yield}`)
+        // })
+        // gen("小明").next("丹尼")
+    </script>
+
+    <h3 id="5">五、for...of和generator</h3>
+    <pre>
+        * 1. generator既满足遍历器协议，也满足可遍历协议，所以他和for...of的关系此处不再赘述，但有一点值得注意，即 generator 中的return语句不回被for...of访问到
+
+        <i>//不会打印return的值</i>
+        function* gen(){
+            yield 1;
+            yield 2;
+            yield 3;
+            return 4;
+        }
+        for(let item of gen()){
+            console.log(item)
+        }
+        
+        <i>//这是一个应用案例，即拓展对象，使其可以被for...of 访问</i>
+        const obj={
+            name:"小明",
+            age:12,
+            sex:"女",
+        }
+        obj.__proto__[Symbol.iterator]=function* objEntries(){
+            //只获取实例上的属性
+            let keys=Reflect.ownKeys(this);
+            for(let key of keys){
+                yield [key,this[key]]
+            }
+        }
+        for(let item of obj){
+            console.log(item)
+        }
+    </pre>
+    <script>
+        // //不会打印return的值
+        // function* gen(){
+        //     yield 1;
+        //     yield 2;
+        //     yield 3;
+        //     return 4;
+        // }
+        // for(let item of gen()){
+        //     console.log(item)
+        // }
+
+        // //这是一个应用案例，即拓展对象，使其可以被for...of 访问
+        // const obj={
+        //     name:"小明",
+        //     age:12,
+        //     sex:"女",
+        // }
+        // obj.__proto__[Symbol.iterator]=function* objEntries(){
+        //     //只获取实例上的属性
+        //     let keys=Reflect.ownKeys(this);
+        //     for(let key of keys){
+        //         yield [key,this[key]]
+        //     }
+        // }
+        // for(let item of obj){
+        //     console.log(item)
+        // }
+    </script>
+
+    <h3 id="6">六、Generator.prototype.throw()</h3>
+    <pre>
+        * 1. 遍历器具有的方法generator都有(throw,return,next)
+        * 2. throw方法可以在函数体外抛出方法，在函数体内捕获
+        * 3. throw方法接收一个参数，该参数可以被，catch语句接收，建议抛出一个new Error 实例
+        * 4. 遍历器的throw方法和全局的throw命令不是同一个东西，不要混淆
+        * 5. 如果Generator内部没有部署try...catch代码，那么throw方法抛出的错误将被外部try...catch捕获，如果外部也没有部署try...catch，
+            那么程序将会报错，中断执行
+        * 6. throw方法抛出的错误要想被捕获，前提是必须调用一次next，如果没有调用next 错误将会被抛到函数外部
+        * 7. throw方法抛出的错误被捕获以后会顺带执行一次next
+        * 8. Generator内部抛出的错误也可以被外部捕获，一旦Generator内部抛出了错误，且没有被内部捕获，Generator将终止继续执行，如果继续调用next，
+            将会返回{value:undefined,done:true} 即 遍历器已经结束
+
+        <i>//throw方法接收一个参数，该参数可以被，catch语句接收，建议抛出一个new Error 实例</i>
+        const gen = function* () {
+            try {
+                yield 1;
+            } catch (err) {
+                console.log('内部捕获', err)
+            }
+            yield 2;
+        }
+        const generator = gen();
+        try {
+            generator.next()
+            <i>//第一次抛出的错误会被gen内部捕获</i>
+            console.log(1111,generator.throw("报错了"))//{value: 2, done: false}
+            <i>//因为第二次抛出时gen内的try...catch已经执行过了（上一个throw被捕获后会顺带执行一次next），此时的错误会被抛到函数体外</i>
+            console.log(2222,generator.throw("报错了2"))
+        } catch (err) {
+            console.log("外部捕获",err)
+        }
+
+        <i>//遍历器的throw方法和全局的throw命令不是同一个东西，不要混淆</i>
+        const gen = function* () {
+            try {
+                yield 1;
+            } catch (err) {
+                console.log('内部捕获', err)
+            }
+            yield 2;
+        }
+        const generator = gen();
+        try {
+            <i>//throw命令抛出的错误不会影响gen内部的执行</i>
+            throw new Error("报错了")
+        } catch (err) {
+            console.log(generator.next())
+            console.log("外部捕获",err)
+        }
+
+        <i> //如果Generator内部没有部署try...catch代码，那么throw方法抛出的错误将被外部try...catch捕获，如果外部也没有部署try...catch，
+            那么程序将会报错，中断执行</i>
+        const gen = function* () {
+            yield 1;
+        }
+        const generator= gen()
+        generator.throw("出错了，没人捕获")
+
+        <i>//throw方法抛出的错误要想被捕获，前提是必须调用一次next，如果没有调用next 错误将会被抛到函数外部</i>
+        const gen = function* () {
+            try {
+                yield 1;
+            } catch (err) {
+                console.log('内部捕获', err)
+            }
+            yield 2;
+        }
+        const generator = gen();
+        try {
+            <i>//因为没有调用next方法 即Generator生成器没有被启动 所以错误不会被内部捕获，而是被直接抛出函数体，如果外部也没有try...catch，js将会报错不执行</i>
+            generator.throw("报错了")
+        } catch (err) {
+            console.log("外部捕获",err)
+        }
+
+        <i> //Generator内部抛出的错误也可以被外部捕获，一旦Generator内部抛出了错误，且没有被内部捕获，Generator将终止继续执行，如果继续调用next，
+            将会返回{value:undefined,done:true} 即 遍历器已经结束</i>
+        function* gen() {
+            let x=yield 3;
+            let y=x.toUpperCase();
+            yield y;
+        }
+        const generator=gen()
+        generator.next()
+        try{
+            generator.next(4)
+        }catch(err){
+            console.log("外部捕获",err)
+        }
+        console.log(generator.next())//{value: undefined, done: true}
+    </pre>
+    <script>
+        // //throw方法接收一个参数，该参数可以被，catch语句接收，建议抛出一个new Error 实例
+        // const gen = function* () {
+        //     try {
+        //         yield 1;
+        //     } catch (err) {
+        //         console.log('内部捕获', err)
+        //     }
+        //     yield 2;
+        // }
+        // const generator = gen();
+        // try {
+        //     generator.next()
+        //     //第一次抛出的错误会被gen内部捕获
+        //     console.log(1111,generator.throw("报错了"))//{value: 2, done: false}
+        //     //因为第二次抛出时gen内的try...catch已经执行过了（上一个throw被捕获后会顺带执行一次next），此时的错误会被抛到函数体外
+        //     console.log(2222,generator.throw("报错了2"))
+        // } catch (err) {
+        //     console.log("外部捕获",err)
+        // }
+
+        // //遍历器的throw方法和全局的throw命令不是同一个东西，不要混淆
+        // const gen = function* () {
+        //     try {
+        //         yield 1;
+        //     } catch (err) {
+        //         console.log('内部捕获', err)
+        //     }
+        //     yield 2;
+        // }
+        // const generator = gen();
+        // try {
+        //     //throw命令抛出的错误不会影响gen内部的执行
+        //     throw new Error("报错了")
+        // } catch (err) {
+        //     console.log(generator.next())
+        //     console.log("外部捕获",err)
+        // }
+
+        //如果Generator内部没有部署try...catch代码，那么throw方法抛出的错误将被外部try...catch捕获，如果外部也没有部署try...catch，
+        //那么程序将会报错，中断执行
+        // const gen = function* () {
+        //     yield 1;
+        // }
+        // const generator= gen()
+        // generator.throw("出错了，没人捕获")
+
+
+        // //throw方法抛出的错误要想被捕获，前提是必须调用一次next，如果没有调用next 错误将会被抛到函数外部
+        // const gen = function* () {
+        //     try {
+        //         yield 1;
+        //     } catch (err) {
+        //         console.log('内部捕获', err)
+        //     }
+        //     yield 2;
+        // }
+        // const generator = gen();
+        // try {
+        //     //因为没有调用next方法 即Generator生成器没有被启动 所以错误不会被内部捕获，而是被直接抛出函数体，如果外部也没有try...catch，js将会报错不执行
+        //     generator.throw("报错了")
+        // } catch (err) {
+        //     console.log("外部捕获",err)
+        // }
+
+        // //throw方法抛出的错误被捕获以后会顺带执行一次next
+        // const gen = function* () {
+        //     try{
+        //         yield 0;
+        //     }catch(err){
+        //         console.log(err)
+        //     }
+        //     yield 1;
+        //     yield 2;
+        //     return 3;
+        // }
+        // const generator=gen()
+        // console.log(generator.next())
+        // console.log(generator.throw("报错了1"))
+        // try{
+        //     console.log(generator.throw("报错了2"))
+        // }catch(err){
+        //     console.log("报错了2")
+        // }
+        // console.log(generator.next())
+
+        // //Generator内部抛出的错误也可以被外部捕获，一旦Generator内部抛出了错误，且没有被内部捕获，Generator将终止继续执行，如果继续调用next，
+        // //将会返回{value:undefined,done:true} 即 遍历器已经结束
+        // function* gen() {
+        //     let x=yield 3;
+        //     let y=x.toUpperCase();
+        //     yield y;
+        // }
+        // const generator=gen()
+        // generator.next()
+        // try{
+        //     generator.next(4)
+        // }catch(err){
+        //     console.log("外部捕获",err)
+        // }
+        // console.log(generator.next())//{value: undefined, done: true}
+    </script>
+
+    <h3 id="7">七、Generator.prototype.return()</h3>
+    <pre>
+        * 1. return()方法即遍历器的return方法，return可以返回给定的值，并且终结当前Generator遍历器
+        * 2. 如果Generator内部存在try...finally代码块，且正在执行try代码块，那么return会推迟到finally执行完在执行
+
+        const generator = function* () {
+            yield 1;
+            yield 2;
+            yield 3;
+            return 4;
+        }
+        const gen = generator()
+        console.log(gen.next())
+        console.log(gen.return("结束了")) //{value: "结束了", done: true}
+        console.log(gen.return()) //{value: undefined, done: true}
+        console.log(gen.next()) //{value: undefined, done: true}
+
+        const generator = function* () {
+            try {
+                yield 1;
+                yield 2;
+            } finally {
+                yield 4;
+                yield 5;
+            }
+        }
+        const gen = generator()
+        console.log(gen.next())
+        console.log(gen.next())
+        console.log(gen.return(3))
+        console.log(gen.next())
+        console.log(gen.next())
+        console.log(gen.next())
+    </pre>
+    <script>
+        // const generator = function* () {
+        //     yield 1;
+        //     yield 2;
+        //     yield 3;
+        //     return 4;
+        // }
+        // const gen = generator()
+        // console.log(gen.next())
+        // console.log(gen.return("结束了")) //{value: "结束了", done: true}
+        // console.log(gen.return()) //{value: undefined, done: true}
+        // console.log(gen.next()) //{value: undefined, done: true}
+
+        // const generator = function* () {
+        //     try {
+        //         yield 1;
+        //         yield 2;
+        //     } finally {
+        //         yield 4;
+        //         yield 5;
+        //     }
+        // }
+        // const gen = generator()
+        // console.log(gen.next())
+        // console.log(gen.next())
+        // console.log(gen.return(3))
+        // console.log(gen.next())
+        // console.log(gen.next())
+        // console.log(gen.next())
+    </script>
+
+    <h3 id="8">八、yield* 表达式</h3>
+    <pre>
+        * 1. yield* 表达式用于在一个Generator中调用另一个Generator，yield* 会默认访问Iterator接口
+        * 2. 如果Generator中具有return语句，那么它可以向代理他的Generator函数返回数据 
+        * 3. yield*后面的Generator函数在没有return语句的情况下，等于部署了一个for...of
+        * 4. 任何满足可遍历协议的数据结构都可以被yield* 遍历
+
+        <i>//如果Generator中具有return语句，那么它可以向代理他的Generator函数返回数据</i>
+        const gen1 = function* () {
+            yield 1;
+            yield 2;
+            yield 3;
+            return 4;
+        }
+        const gen2 = function* () {
+            yield "start";
+            let y = yield* gen1();
+            console.log(y)
+            yield "end";
+        }
+        for (let item of gen2()) {
+            console.log(item)
+        }
+
+        <i>//yield*后面的Generator函数在没有return语句的情况下，等于部署了一个for...of</i>
+        const gen1 = (function* () {
+            yield 1;
+            yield 2;
+            yield 3;
+        }())
+        const gen2 = (function* () {
+            yield 4;
+            yield 5;
+            yield 6;
+        }())
+        const gen = function* (gen1, gen2) {
+            yield* gen1;
+            yield* gen2;
+        }
+        const genCopy = function* (gen1,gen2) {
+            for(let item of [...gen1,...gen2]){
+                yield item;
+            }
+        }
+        console.log([...gen(gen1, gen2)])
+        console.log([...genCopy(gen1, gen2)])
+
+        <i>//任何满足可遍历协议的数据结构都可以被yield* 遍历</i>
+        //数组具有Iterator 接口
+        const gen = function* () {
+            yield*[1, 2, 3, 4, 5, 6]
+            yield 7;
+        }
+        for (let item of gen()) {
+            console.log(item)
+        }
+
+        //字符串具有Iterator接口
+        const gen = function* () {
+            yield*"hello"
+        }
+        for (let item of gen()) {
+            console.log(item)
+        }
+
+        //嵌套数组平铺
+        function* makeArr(arr) {
+            if(Array.isArray(arr)){
+                for(let item of arr){
+                    yield*makeArr(item);
+                }
+            }else{
+                yield arr
+            }
+        }
+        console.log([...makeArr([1,[2,[3]],4])])
+    </pre>
+    <script>
+        // const gen1 = function* () {
+        //     yield 1;
+        //     yield 2;
+        //     yield 3;
+        //     return 4;
+        // }
+        // const gen2 = function* () {
+        //     yield "start";
+        //     let y = yield* gen1();
+        //     console.log(y)
+        //     yield "end";
+        // }
+        // for (let item of gen2()) {
+        //     console.log(item)
+        // }
+
+        // const gen1 = (function* () {
+        //     yield 1;
+        //     yield 2;
+        //     yield 3;
+        // }())
+        // const gen2 = (function* () {
+        //     yield 4;
+        //     yield 5;
+        //     yield 6;
+        // }())
+        // const gen = function* (gen1, gen2) {
+        //     yield* gen1;
+        //     yield* gen2;
+        // }
+
+        // const genCopy = function* (gen1,gen2) {
+        //     for(let item of [...gen1,...gen2]){
+        //         yield item;
+        //     }
+        // }
+        // console.log([...gen(gen1, gen2)])
+        // console.log([...genCopy(gen1, gen2)])
+
+        //数组具有Iterator 接口
+        // const gen = function* () {
+        //     yield*[1, 2, 3, 4, 5, 6]
+        //     yield 7;
+        // }
+        // for (let item of gen()) {
+        //     console.log(item)
+        // }
+
+        //字符串具有Iterator接口
+        // const gen = function* () {
+        //     yield*"hello"
+        // }
+        // for(let item of gen()){
+        //     console.log(item)
+        // }
+
+        // //嵌套数组平铺
+        // function* makeArr(arr) {
+        //     if(Array.isArray(arr)){
+        //         for(let item of arr){
+        //             yield*makeArr(item);
+        //         }
+        //     }else{
+        //         yield arr
+        //     }
+        // }
+        // console.log([...makeArr([1,[2,[3]],4])])
+    </script>
+
+    <h3 id="9">九、Generator 函数的this</h3>
+    <pre>
+        * 1. Generator函数总是返回一个遍历器，这个遍历器就是Generator的实例，也继承了Generator函数的prototype上的属性
+
+        <i>//gen就是generator的实例，继承了其prototype上的属性</i>
+        const generator=function*(){
+            yield 1;
+        }
+        generator.prototype.func=function(){
+            return this;
+        }
+        const gen=generator();
+        gen.next()
+        console.log(gen.func())
+
+        <i>//因为generator返回的是一个遍历器对象，并不是this对象所以无法获取generator函数内部的属性</i>
+        const generator=function*(){
+            this.a="a"
+            yield 1;
+        }
+        generator.prototype.func=function(){
+            return this;
+        }
+        const gen=generator();
+        console.log(gen.next())
+
+        <i>//实现</i>
+        const generator = function* () {
+            this.a="a";
+            this.b="b";
+            yield 1;
+            yield 2;
+        }
+        function Gen(){
+            return generator.call(generator.prototype);
+        }
+        const gen =new Gen();
+        console.log(gen.next())
+        console.log(gen.a)
+    </pre>
+    <script>
+        //gen就是generator的实例，继承了其prototype上的属性
+        // const generator=function*(){
+        //     yield 1;
+        // }
+        // generator.prototype.func=function(){
+        //     return this;
+        // }
+        // const gen=generator();
+        // gen.next()
+        // console.log(gen.func())
+
+        //因为generator返回的是一个遍历器对象，并不是this对象所以无法获取generator函数内部的属性
+        // const generator=function*(){
+        //     this.a="a"
+        //     yield 1;
+        // }
+        // generator.prototype.func=function(){
+        //     return this;
+        // }
+        // const gen=generator();
+        // console.log(gen.next())
+
+        //实现
+        // const generator = function* () {
+        //     this.a="a";
+        //     this.b="b";
+        //     yield 1;
+        //     yield 2;
+        // }
+        // function Gen(){
+        //     return generator.call(generator.prototype);
+        // }
+        // const gen =new Gen();
+        // console.log(gen.next())
+        // console.log(gen.a)
+    </script>
+
+    <h3 id="10">十、Generator 函数的异步应用</h3>
+    <pre>
+        * 1. Generator的异步应用，可以理解为将Generator作为一个包含多个异步操作的容器，在需要异步执行的地方全部用yield标注，当执行完对应的异步操作时，调用next，
+            恢复Generator的继续执行
+        * 2. Generator函数可以暂停和恢复的特性，是他可以封装异步任务的根本原因，其次对于函数体内外的数据交换和错误捕获机制，使其成为封装异步的完整解决方案
+        * 3. Thunk 函数的含义 即是传名调用的实现，思想就是将函数的参数替换为一个临时的函数，js是传值调用，在js中Thunk函数替换的不是表达式，而是多参函数，
+            将其替换为只接受回调函数作为参数的单参函数
+        * 4. 也可以通过Promise实现Generator的流程管理
+
+        <i>//Thunk函数的实现 自动流程控制</i>
+        function Thunk(fn) {
+            return function (...args) {
+                return function (callback) {
+                    let called;
+                    if (called) return;
+                    fn.call(this, callback, ...args)
+                }
+            }
+        }
+        function getJson(cb, ...arg) {
+            cb(...arg)
+        }
+        const tk = Thunk(getJson);
+        tk(123, 456)(function (...arg) {
+            console.log(...arg)
+        })
+
+        var gen = function* () {
+            var r1 = yield tk(123);
+            console.log(r1.toString());
+            var r2 = yield tk(456);
+            console.log(r2.toString());
+        };
+        
+        // var g = gen();
+        // var r1 = g.next();
+        // console.log(r1) //{value:function(callback),done:false}
+        // r1.value(function (data) {
+        //     var r2 = g.next(data);
+        //     r2.value(function (data) {
+        //         g.next(data);
+        //     });
+        // });
+
+        function run(fn) {
+            const gen=fn()
+            function next(data){
+                let result=gen.next(data)
+                if(result.done) return;
+                result.value(next);
+            }
+            next();
+        }
+        run(gen)
+
+        <i>//Promise的实现 自动流程控制</i>
+        function promise(data) {
+            return new Promise(function (resolve, reject) {
+                setTimeout(() => resolve(data), 1000)
+            })
+        }
+
+        const gen = function* () {
+            let step1=yield promise(1);
+            console.log(step1)
+            let step2=yield promise(2);
+            console.log(step2)
+            let step3=yield promise(3);
+            console.log(step3)
+        }
+
+        // const generator=gen();
+        // generator.next().value.then(res=>{
+        //     generator.next(res).value.then(res=>{
+        //         generator.next(res).value.then(res=>{
+        //             generator.next(res)
+        //         })
+        //     })
+        // })
+
+        function run(gen){
+            const generator=gen();
+            function next(data){
+                const result=generator.next(data)
+                Promise.resolve(result.value).then(res=>{
+                    if(result.done) return result.value;
+                    next(res)
+                })
+            }
+            next();
+        }
+        run(gen)
+    </pre>
+    <script>
+        // //Thunk函数的实现 自动流程控制
+        // function Thunk(fn) {
+        //     return function (...args) {
+        //         return function (callback) {
+        //             let called;
+        //             if (called) return;
+        //             fn.call(this, callback, ...args)
+        //         }
+        //     }
+        // }
+
+        // function getJson(cb, ...arg) {
+        //     cb(...arg)
+        // }
+        // const tk = Thunk(getJson);
+        // tk(123, 456)(function (...arg) {
+        //     console.log(...arg)
+        // })
+
+        // var gen = function* () {
+        //     var r1 = yield tk(123);
+        //     console.log(r1.toString());
+        //     var r2 = yield tk(456);
+        //     console.log(r2.toString());
+        // };
+
+        // var g = gen();
+        // var r1 = g.next();
+        // console.log(r1) //{value:function(callback),done:false}
+        // r1.value(function (data) {
+        //     var r2 = g.next(data);
+        //     r2.value(function (data) {
+        //         g.next(data);
+        //     });
+        // });
+
+        // function run(fn) {
+        //     const gen=fn()
+        //     function next(data){
+        //         let result=gen.next(data)
+        //         if(result.done) return;
+        //         result.value(next);
+        //     }
+        //     next();
+        // }
+        // run(gen)
+
+        //Promise的实现 自动流程控制
+        // function promise(data) {
+        //     return new Promise(function (resolve, reject) {
+        //         setTimeout(() => resolve(data), 1000)
+        //     })
+        // }
+
+        // const gen = function* () {
+        //     let step1=yield promise(1);
+        //     console.log(step1)
+        //     let step2=yield promise(2);
+        //     console.log(step2)
+        //     let step3=yield promise(3);
+        //     console.log(step3)
+        // }
+
+        // const generator=gen();
+        // generator.next().value.then(res=>{
+        //     generator.next(res).value.then(res=>{
+        //         generator.next(res).value.then(res=>{
+        //             generator.next(res)
+        //         })
+        //     })
+        // })
+
+        // function run(gen){
+        //     const generator=gen();
+        //     function next(data){
+        //         const result=generator.next(data)
+        //         Promise.resolve(result.value).then(res=>{
+        //             if(result.done) return result.value;
+        //             next(res)
+        //         })
+        //     }
+        //     next();
+        // }
+        // run(gen)
+    </script>
+</body>
+
+</html>

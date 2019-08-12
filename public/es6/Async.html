@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Async</title>
+    <style>
+        body{
+            background: #eaeaea; font-size:16px; line-height:1.5;
+        }
+        i {
+            font-style: normal;
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    
+
+<ul>
+
+    <li>
+        <a href="#1">async 含义</a>
+    </li>
+
+    <li>
+        <a href="#2">基本用法</a>
+    </li>
+
+</ul>
+
+<a href="javascript:void(0)">参考资料</a><br/>
+
+
+
+
+
+    <h3 id="1">一、async 含义</h3>
+    <pre>
+        1、async 是generator函数的语法糖，它内置执行器，不用自己实现thunk或promise
+        2、async 具有更好的语义，内置的await 较之于yield 具有更好的可读性
+        3、await后面可以是 Promise 对象和原始类型的值（会被转换为立即 resolved 的Promise对象）
+        4、async的返回值是一个promise对象
+    </pre>
+    <script>
+    
+    </script>
+
+    <h3 id="2">二、基本用法</h3>
+    <pre>
+        1、async返回一个promise，一旦遇到await语句就会先返回，等到异步操作完成，继续执行后面的语句
+        2、async函数返回的promise壳子作为await的参数
+    </pre>
+    <script>
+        async function run(){
+            let dede= new Promise(function(resolve,reject){
+                setTimeout(()=>{
+                    resolve(10)
+                },1000)
+            });
+            console.log(dede)
+            let dedede=await new Promise(function(resolve,reject){
+                setTimeout(()=>{
+                    resolve(dede+10)
+                },1000)
+            });
+            return dedede;
+        }
+        run().then(res=>{
+            console.log(res)
+        })
+
+        
+    </script>
+</body>
+</html>

@@ -1,0 +1,688 @@
+@@include('../template/header.html',{
+    "title": "Promise"
+})
+<body>
+    @@include('../template/nav.html',{
+        "navArr":[
+            "构造函数 Promise",
+            "Promise.prototype.then()",
+            "Promise.prototype.catch()",
+            "Promise.prototype.finally()",
+            "Promise.race()",
+            "Promise.resolve()",
+            "Promise.reject()"
+        ],
+        "docsArr":[
+            "https://juejin.im/post/5c88e427f265da2d8d6a1c84",
+            "http://es6.ruanyifeng.com/#docs/promise#Promise-%E7%9A%84%E5%90%AB%E4%B9%89"
+        ]
+    })
+    <h3 id="1">一、构造函数 Promise</h3>
+    <pre>
+        * 1. new Promise时，需要传递一个 executor 执行器，执行器立刻执行
+        * 2. executor 接受两个参数，分别是 resolve 和 reject 它们是两个函数，由 JavaScript 引擎提供，不用自己部署
+        * 3. promise 只能从 pending 到 rejected, 或者从 pending 到 fulfilled 状态一旦变更就无法改变
+        * 4. promise 执行器内部执行循序 1, 2, 3 说明 ：立即执行的resolve会被放在本次事件循环的最后执行属于微任务， 
+            setTimeout属于宏任务，会在下次事件循环执行
+
+        const promise = new Promise(function(resolve, reject) {
+            setTimeout((done)=>console.log(done),0,3)
+            resolve(2);
+            console.log(1);
+        });
+        promise.then(res=>console.log(res));
+
+        * 5. 源码实现逻辑
+        const PENDING = 'pending';
+        const FULFILLED = 'fulfilled';
+        const REJECTED = 'rejected';
+        function Promise(executor) {
+            let self = this;
+            self.status = PENDING;
+            self.onFulfilled = [];//成功的回调
+            self.onRejected = []; //失败的回调
+            //PromiseA+ 2.1
+            function resolve(value) {
+                if (self.status === PENDING) {
+                    self.status = FULFILLED;
+                    self.value = value;
+                    self.onFulfilled.forEach(fn => fn());//PromiseA+ 2.2.6.1
+                }
+            }
+        
+            function reject(reason) {
+                if (self.status === PENDING) {
+                    self.status = REJECTED;
+                    self.reason = reason;
+                    self.onRejected.forEach(fn => fn());//PromiseA+ 2.2.6.2
+                }
+            }
+        
+            try {
+                executor(resolve, reject);
+            } catch (e) {
+                reject(e);
+            }
+        }
+    </pre>
+    <script>
+        // const promise = new Promise(function(resolve, reject) {
+        //     setTimeout((done)=>console.log(done),0,3)
+        //     resolve(2);
+        //     console.log(1);
+        // });
+        // promise.then(res=>console.log(res));
+    </script>
+
+    <h3 id="2">二、Promise.prototype.then() </h3>
+    <pre>
+        * 1. then 是定义在Promise.prototype原型对象上的方法
+        * 2. then 方法接受两个参数 Promise.prototype.then(cb1,cb2),参数2可选
+        * 3. Promise状态改变时会立即调用then方法定义的回调函数
+        * 4. then 方法会返回一个新的promise实例，因此可以链式调用，前一个then返回的结果会作为参数传给后一个then
+        （如果前一个then返回的是结果是一个promise实例，那么后面的then会等待这个promise实例的状态变为fulfilled时在被调用）
+
+        const promise = new Promise(function (resolve, reject) {
+            resolve(1)
+        })
+        promise.then((res) => {
+            console.log(1, res)
+            setTimeout(()=>{
+                return 2;
+            },5000)
+            return Promise.resolve({
+                then:function(resolve, reject){
+                    setTimeout((done) => resolve(done), 5000, 2)
+                }
+            })
+        }).then(res => {
+            console.log(2, res)
+            return new Promise(function (resolve, reject) {
+                setTimeout((done) => resolve(done), 3000, 3)
+            })
+        }).then(res => {
+            console.log(3, res)
+        })
+
+        * 5. 源码实现逻辑
+        Promise.prototype.then = function (onFulfilled, onRejected) {
+            //PromiseA+ 2.2.1 / PromiseA+ 2.2.5 / PromiseA+ 2.2.7.3 / PromiseA+ 2.2.7.4
+            <i>//错误过滤 参数必须为function 否则转为 function</i>
+            onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : value => value;
+            onRejected = typeof onRejected === 'function' ? onRejected : reason => { throw reason };
+            <i>//保存当前Promise实例</i>
+            let self = this;
+            //PromiseA+ 2.2.7
+            <i>//遵循promise规范必须返回一个新的promise</i>
+            let promise2 = new Promise((resolve, reject) => {
+                if (self.status === FULFILLED) {
+                    //PromiseA+ 2.2.2
+                    //PromiseA+ 2.2.4 --- setTimeout
+                    setTimeout(() => {
+                        try {
+                            //PromiseA+ 2.2.7.1
+                            let x = onFulfilled(self.value);
+                            resolvePromise(promise2, x, resolve, reject);
+                        } catch (e) {
+                            //PromiseA+ 2.2.7.2
+                            reject(e);
+                        }
+                    });
+                } else if (self.status === REJECTED) {
+                    //PromiseA+ 2.2.3
+                    setTimeout(() => {
+                        try {
+                            let x = onRejected(self.reason);
+                            resolvePromise(promise2, x, resolve, reject);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    });
+                <i>//pending状态时添加订阅</i>
+                } else if (self.status === PENDING) {
+                    self.onFulfilled.push(() => {
+                        setTimeout(() => {
+                            try {
+                                let x = onFulfilled(self.value);
+                                resolvePromise(promise2, x, resolve, reject);
+                            } catch (e) {
+                                reject(e);
+                            }
+                        });
+                    });
+                    self.onRejected.push(() => {
+                        setTimeout(() => {
+                            try {
+                                let x = onRejected(self.reason);
+                                resolvePromise(promise2, x, resolve, reject);
+                            } catch (e) {
+                                reject(e);
+                            }
+                        });
+                    });
+                }
+            });
+            return promise2;
+        }
+        <i>//处理then接受的参数 可能是另一个promise 或 thenable 对象</i>
+        function resolvePromise(promise2, x, resolve, reject) {
+            let self = this;
+            //PromiseA+ 2.3.1
+            if (promise2 === x) {
+                reject(new TypeError('Chaining cycle'));
+            }
+            if (x && typeof x === 'object' || typeof x === 'function') {
+                let used; //PromiseA+2.3.3.3.3 只能调用一次
+                try {
+                    let then = x.then;
+                    if (typeof then === 'function') {
+                        //PromiseA+2.3.3
+                        then.call(x, (y) => {
+                            //PromiseA+2.3.3.1
+                            if (used) return;
+                            used = true;
+                            resolvePromise(promise2, y, resolve, reject);
+                        }, (r) => {
+                            //PromiseA+2.3.3.2
+                            if (used) return;
+                            used = true;
+                            reject(r);
+                        });
+        
+                    }else{
+                        //PromiseA+2.3.3.4
+                        if (used) return;
+                        used = true;
+                        resolve(x);
+                    }
+                } catch (e) {
+                    //PromiseA+ 2.3.3.2
+                    if (used) return;
+                    used = true;
+                    reject(e);
+                }
+            } else {
+                //PromiseA+ 2.3.3.4
+                resolve(x);
+            }
+        }
+    </pre>
+    <script>
+        // const promise = new Promise(function (resolve, reject) {
+        //     resolve(1)
+        // })
+        // promise.then((res) => {
+        //     console.log(1, res)
+        //     setTimeout(() => {
+        //         return 2;
+        //     }, 5000)
+        //     return Promise.resolve({
+        //         then: function (resolve, reject) {
+        //             setTimeout((done) => resolve(done), 5000, 2)
+        //         }
+        //     })
+        // }).then(res => {
+        //     console.log(2, res)
+        //     return new Promise(function (resolve, reject) {
+        //         setTimeout((done) => resolve(done), 3000, 3)
+        //     })
+        // }).then(res => {
+        //     console.log(3, res)
+        // })
+    </script>
+
+    <h3 id="3">三、Promise.prototype.catch() </h3>
+    <pre>
+        * 1. catch 用于捕获Promise状态变为reject时的错误信息参数为reject传值，
+        同时会捕获Promise执行器或then回调函数运行时的js错误
+        * 2. promise状态一旦变为resolve再抛出的错误将不会被捕获
+        * 3. promise错误具有冒泡性质，会一直向后传递，直到被捕获，即 错误总是会被下一个catch语句捕获
+        * 4. 如果没有指定catch捕获错误，promise的错误信息不回被传递到外层代码（promise内部做了trycatch处理），
+        即 promise的错误不回终止脚本的执行
+        * 5. catch 内部还可以再抛出错误 
+
+        const promise = new Promise(function (resolve, reject) {
+            <i>//状态立即变为resolve先于其他逻辑，then指定的回调会被放到本次事件循环的末尾执行，微任务</i>
+            resolve(1);
+            console.log(2)
+            <i>//非本次事件循环，会在下次时间循环时执行，晚于resolve then</i>
+            setTimeout(function () {
+                throw new Error('error3')
+            }, 0);
+            <i>//为什么这个错误抛出不生效？？ 执行时间点再 resolve 和  then 之间  其实他的错误已经被promise内部的trycatch捕获，
+                只是状态已经变成了resolve，所以reject没有被执行 所以不会有任何效果</i>
+            throw new Error("error1");
+        })
+        promise
+            .then(res => console.log(res), err => {
+                console.log("catch1捕获", err)
+                throw new Error("error2")
+            })
+            .catch(err => console.log("catch2捕获", err))
+            //不回被捕获到
+            .catch(err=>console.log("catch3捕获",err))
+
+        * 6. 源码实现逻辑
+        Promise.prototype.catch = function (onRejected) {
+            return this.then(null, onRejected);
+        }
+    </pre>
+    <script>
+        // const promise = new Promise(function (resolve, reject) {
+        //     //状态立即变为resolve先于其他逻辑，then指定的回调会被放到本次事件循环的末尾执行，微任务
+        //     resolve(1);
+        //     console.log(2)
+        //     //非本次事件循环，会在下次时间循环时执行，晚于resolve then
+        //     setTimeout(function () {
+        //         throw new Error('error3')
+        //     }, 0);
+        //     //为什么这个错误抛出不生效？？ 执行时间点再 resolve 和  then 之间  其实他的错误已经被promise内部的trycatch捕获，只是状态已经变成了resolve，所以reject没有被执行 所以不会有任何效果
+        //     throw new Error("error1");
+        // })
+        // promise
+        //     .then(res => console.log(res), err => {
+        //         console.log("catch1捕获", err)
+        //         throw new Error("error2")
+        //     })
+        //     .catch(err => console.log("catch2捕获", err))
+        //     //不回被捕获到
+        //     .catch(err => console.log("catch3捕获", err))
+    </script>
+
+    <h3 id="4">四、Promise.prototype.finally() </h3>
+    <pre>
+        * 1. finally方法用于指定不管Promise函数结果如何都会执行的操作
+        * 2. finally不接受任何参数,因此finally内部的方法应该是与promise状态无关的
+        * 3. finally总是会返回上一个状态的值
+
+        promise.then(res => {
+            console.log(1, res)
+            return res;
+            <i>//finally 函数不接受任何参数 因此 无法获取then 返回的结果</i>
+        }).finally(() => {
+            console.log("finally")
+        }).then(res => {
+            console.log(2, res)
+        })
+
+        * 4. 源码实现逻辑
+        Promise.prototype.finally = function (callback) {
+            <i>//接受上一个状态的值</i>
+            return this.then((value) => {
+                <i>//将回调函数转为Promise对象，传递下去</i>
+                return Promise.resolve(callback()).then(() => {
+                    return value;
+                });
+            }, (err) => {
+                return Promise.resolve(callback()).then(() => {
+                    throw err;
+                });
+            });
+        }
+    </pre>
+    <script>
+        // const promise = new Promise((resolve, reject) => {
+        //     setTimeout(done => resolve(done), 1000, "成功")
+        // })
+        // promise.then(res => {
+        //     console.log(1, res)
+        //     return res;
+        //     //finally 函数不接受任何参数 因此 无法获取then 返回的结果
+        // }).finally(() => {
+        //     console.log("finally")
+        // }).then(res => {
+        //     console.log(2, res)
+        // })
+    </script>
+
+    <h3 id="5">五、Promise.all() </h3>
+    <pre>
+        * 1. Promise.all用于将多个promise实例包装成一个新的promise实例
+        * 2. Promise.all接受具有Iterator接口的数据类型作为参数，如果返回的某一项不是Promise实例， Promise.all内部会调用Promise.resolve方法，将参数转为promise实例
+        * 3. 只有参数中的每一项都变为fulfilled 才会调用Promise.all对应的回调函数
+        * 4. 如果参数promise具有自己的catch方法 那么该promise不会被promise.all的catch回掉函数捕获
+
+        const p1 = new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve("success1")
+            }, 2000)
+        })
+        const p2 = new Promise((resolve, reject) => {
+            setTimeout(() => {
+                reject("err2")
+            }, 3000)
+            <i>//如果设置了自己catch 将不会进入到Promise.all的catch，因为catch会返回一个新的Promise，
+                所以此时的p2指向的是catch生成的promise实例 catch的返回值会被all的回掉函数捕获</i>
+        }).catch(err => {
+            return err;
+        })
+        const p3 = "success3"
+        const p4 = Promise.resolve(function () {
+            return "success4"
+        })
+        Promise.all([p1, p2, p3, p4]).then(res => {
+            console.log(res)
+        }).catch(err => {
+            console.log(1111, err)
+        })
+        <i>//如果传入的参数不包含任何 promise，则返回一个异步完成</i>
+        Promise.all([]).then(res => {
+            console.log("hello world1")
+        })
+        Promise.all([1,2,3,4]).then(res => {
+            console.log("hello world2")
+        })
+
+        * 5. 源码实现逻辑
+        Promise.all = function (promises) {
+            return new Promise((resolve, reject) => {
+                let index = 0;
+                let result = [];
+                if (promises.length === 0) {
+                    resolve(result);
+                } else {
+                    <i>//判断是否所有promise执行完成，将每一项promise数组的resolve存入数组传入resolve返回</i>
+                    function processValue(i, data) {
+                        result[i] = data;
+                        if (++index === promises.length) {
+                            resolve(result);
+                        }
+                    }
+                    for (let i = 0; i < promises.length; i++) {
+                         <i>//promises[i] 可能是普通值</i>
+                          Promise.resolve(promises[i]).then((data) => {
+                            processValue(i, data);
+                        }, (err) => {
+                            reject(err);
+                            return;
+                        });
+                    }
+                }
+            });
+        }
+    </pre>
+    <script>
+        // const p1 = new Promise((resolve, reject) => {
+        //     setTimeout(() => {
+        //         resolve("success1")
+        //     }, 2000)
+        // })
+        // const p2 = new Promise((resolve, reject) => {
+        //     setTimeout(() => {
+        //         reject("err2")
+        //     }, 3000)
+        //     //如果设置了自己catch 将不会进入到Promise.all的catch，因为catch会返回一个新的Promise，所以此时的p2指向的是catch生成的promise实例 catch的返回值会被all的回掉函数捕获
+        // }).catch(err => {
+        //     return err;
+        // })
+        // const p3 = "success3"
+        // const p4 = Promise.resolve(function () {
+        //     return "success4"
+        // })
+        // Promise.all([p1, p2, p3, p4]).then(res => {
+        //     console.log(res)
+        // }).catch(err => {
+        //     console.log(1111, err)
+        // })
+        // //如果传入的参数不包含任何 promise，则返回一个异步完成
+        // Promise.all([]).then(res => {
+        //     console.log("hello world1")
+        // })
+        // Promise.all([1, 2, 3, 4]).then(res => {
+        //     console.log("hello world2")
+        // })
+    </script>
+
+    <h3 id="6">六、Promise.race() </h3>
+    <pre>
+        * 1. race方法与all，方法类似，都是返回一个新包装的promise实例
+        * 2. race与all的区别在于，当参数列表中有一项状态改变，就会调用race额方法的回掉函数，其他项仍会执行，只不过结果不会被race捕获
+        
+        const p1 = new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve("success1")
+            }, 2000)
+        }).then(res=>{
+            console.log('p1',res)
+        })
+        const p2 = "success2"
+        const p3 = new Promise((resolve, reject) => {
+            setTimeout(() => {
+                reject("err1")
+            }, 1000)
+        }).catch(err=>{
+            console.log('p3',err)
+        })
+
+        Promise.race([p1,p2, p3]).then(res => {
+            console.log('race success',res)
+        //错误信息被参数promise实例的catch拦截 所以此处不回被捕获
+        }).catch(err => {
+            console.log('race err',err)
+        })
+        
+        * 3. 源码实现逻辑
+        Promise.race=function(promises){
+            if(promises.length<=0){
+                return;
+            }else{
+                return new Promise((resolve,reject)=>{
+                    for(let i of promises){
+                        Promise.resolve(i).then(res=>{
+                            resolve(res)
+                            return;
+                        },err=>{
+                            reject(err);
+                            return;
+                        })
+                    }
+                })
+            }
+        }
+    </pre>
+    <script>
+        // const p1 = new Promise((resolve, reject) => {
+        //     setTimeout(() => {
+        //         resolve("success1")
+        //     }, 2000)
+        // }).then(res=>{
+        //     console.log('p1',res)
+        // })
+        // const p2 = "success2"
+        // const p3 = new Promise((resolve, reject) => {
+        //     setTimeout(() => {
+        //         reject("err1")
+        //     }, 1000)
+        // }).catch(err=>{
+        //     console.log('p3',err)
+        // })
+
+        // Promise.race([p1,p2, p3]).then(res => {
+        //     console.log('race success',res)
+        // //错误信息被参数promise实例的catch拦截 所以此处不回被捕获
+        // }).catch(err => {
+        //     console.log('race err',err)
+        // })
+    </script>
+
+    <h3 id="7">七、Promise.resolve()</h3>
+    <pre>
+        * 1. Promise.resolve() 方法可以将现有对象转换为promise对象
+        * 2. Promise.resolve() 接受的参数有四种情况：
+             (1) 参数为promise实例，将不做任何修改，直接返回这个实例
+             (2) 参数为thenable(具有then方法的对象)对象,会将其转为promise对象并立即执行thenable的then方法
+             (3) 参数不是thenable对象或不是对象类型，会将其转为promise对象并立即执行对应的resolve方法，Promise.resolve的参数会传递到resolve中去
+             (4) 没有任何参数，直接返回一个resolve状态的Promise
+
+        <i>//参数为promise对象</i>
+        const param1 = new Promise((resolve, reject) => {
+            resolve("param1")
+        })
+        <i>//参数为thenable对象</i>
+        const param2 = {
+            then: function (resolve, reject) {
+                resolve("param2")
+            }
+        }
+        <i>//参数为非thenable对象，甚至就不是个对象</i>
+        const param3 = "param3"
+        <i>//不带参数</i>
+        const param4 = ""
+
+        Promise.resolve(param1).then(res => {
+            console.log(1, res)
+        })
+        Promise.resolve(param2).then(res => {
+            console.log(2, res)
+        })
+        setTimeout(() => {
+            console.log("timer")
+        }, 0)
+        Promise.resolve(param3).then(res => {
+            console.log(3, res)
+        })
+        Promise.resolve().then(res => {
+            console.log(4, res)
+        })
+
+        * 5. 源码实现逻辑
+        Promise.resolve = (params) => {
+            if (params instanceof Promise) {
+                return params;
+            }
+            return new Promise((resolve, reject) => {
+                if (params && params.then && typeof params.then === 'function') {
+                    setTimeout(()=>{
+                        params.then(resolve,reject)
+                    },0)
+                }else{
+                    resolve(params)
+                }
+            })
+        }
+    </pre>
+    <script>
+        // //参数为promise对象
+        // const param1 = new Promise((resolve, reject) => {
+        //     resolve("param1")
+        // })
+        // //参数为thenable对象
+        // const param2 = {
+        //     then: function (resolve, reject) {
+        //         resolve("param2")
+        //     }
+        // }
+        // //参数为非thenable对象，甚至就不是个对象
+        // const param3 = "param3"
+        // //不带参数
+        // const param4 = ""
+
+        // Promise.resolve(param1).then(res => {
+        //     console.log(1, res)
+        // })
+        // Promise.resolve(param2).then(res => {
+        //     console.log(2, res)
+        // })
+        // setTimeout(() => {
+        //     console.log("timer")
+        // }, 0)
+        // Promise.resolve(param3).then(res => {
+        //     console.log(3, res)
+        // })
+        // Promise.resolve().then(res => {
+        //     console.log(4, res)
+        // })
+    </script>
+
+    <h3 id="8">八、Promise.reject()</h3>
+    <pre>
+        * 1. Promise.reject和Promise.resolve 类似都是返回一个新的promise对象
+        * 2. Promise.reject的参数会被原封不动的传递递给后续方法
+
+        <i>//参数为promise对象</i>
+        const param1 = new Promise((resolve, reject) => {
+            resolve("success");
+        }).then(res => {
+            return res;
+        })
+        <i>//参数为thenable</i>
+        const param2 = {
+            then: function (resolve, reject) {
+
+            }
+        }
+        <i>//参数为其他类型</i>
+        const param3 = "param3"
+
+        Promise.reject(param1).then(res => console.log(res)).catch(err => console.log(err))
+        Promise.reject(param2).then(res => console.log(res)).catch(err => console.log(err))
+        Promise.reject(param3).then(res => console.log(res)).catch(err => console.log(err))
+        Promise.reject().then(res => console.log(res)).catch(err => console.log(err))
+
+        * . 源码实现逻辑
+        Promise.reject=(params)=>{
+            return new Promise((resolve,reject)=>{
+                reject(params)
+            })
+        }
+    </pre>
+    <script>
+        const param1 = new Promise((resolve, reject) => {
+            resolve("success");
+        }).then(res => {
+            return res;
+        })
+
+        const param2 = {
+            then: function (resolve, reject) {
+
+            }
+        }
+
+        const param3 = "param3"
+
+        Promise.reject = (params) => {
+            return new Promise((resolve, reject) => {
+                reject(params)
+            })
+        }
+
+        Promise.reject(param1).then(res => console.log(res)).catch(err => console.log(err))
+        Promise.reject(param2).then(res => console.log(res)).catch(err => console.log(err))
+        Promise.reject(param3).then(res => console.log(res)).catch(err => console.log(err))
+        Promise.reject().then(res => console.log(res)).catch(err => console.log(err))
+    </script>
+
+    <pre>
+        // 0.5秒后返回input*input的计算结果:
+        function multiply(input) {
+            return new Promise(function (resolve, reject) {
+                console.log('calculating ' + input + ' x ' + input + '...');
+                setTimeout(resolve, 500, input * input);
+            });
+        }
+
+        // 0.5秒后返回input+input的计算结果:
+        function add(input) {
+            return new Promise(function (resolve, reject) {
+                console.log('calculating ' + input + ' + ' + input + '...');
+                setTimeout(resolve, 500, input + input);
+            });
+        }
+
+        var p = new Promise(function (resolve, reject) {
+            console.log('start new Promise...');
+            resolve(123);
+        });
+
+        p.then(multiply)
+        .then(add)
+        .then(multiply)
+        .then(add)
+        .then(function (result) {
+            log('Got value: ' + result);
+        });
+    </pre>
+</body>
+
+</html>
