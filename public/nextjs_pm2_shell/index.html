@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>nextjs 及 pm2发布</title>
+    <style>
+        body{
+            background: #eaeaea; font-size:16px; line-height:1.5;
+        }
+        i {
+            font-style: normal;
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+
+<body>
+    
+
+<ul>
+
+    <li>
+        <a href="#1">搭建nextjs服务</a>
+    </li>
+
+    <li>
+        <a href="#2">配合发布pm2</a>
+    </li>
+
+</ul>
+
+<a href="javascript:void(0)">参考资料</a><br/>
+
+
+
+
+
+    <h3 id="1">一、搭建nextjs服务</h3>
+    <pre>
+        注：
+            1、nextjs自身已经配置了webpack，如果想集成nextjs至已有项目需要去除原有项目的webpack配置，或者将原有配置集成至next.config.js 
+            详见https://nextjs.frontendx.cn/docs/#%E8%87%AA%E5%AE%9A%E4%B9%89%E9%85%8D%E7%BD%AE;
+
+            2、我们自己搭建ssr的webpack配置 大概思路是分为两块配置 即 客户端配置打包 和 服务端配置打包，服务端代码也需要打包编译配置css
+            ,sass,less 等（主要是服务端wp配置），推荐使用next-compose-plugins 插件合并各个模块配置
+
+            3、基本nextjs 目录结结构 其中 pages static 是必须存在的
+            # root
+            pages
+                ——index.js      //路由入口文件
+            src
+                —— components   //react 组件目录
+                —— pages        //react 页面级组件
+            static              //静态资源
+            next.config.js      //next 配置文件
+            serve.js            //服务端入口文件
+
+            4、nextjs 打包运行 next build 会生成本地打包文件，启动服务next start
+
+
+        
+        * 1、安装依赖 react react-dom nextjs
+    </pre>
+</body>
+
+</html>

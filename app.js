@@ -2,11 +2,13 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var Config = require('./lib/config/config.js');
+var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var proxy = require('express-http-proxy');
 var cors = require('cors');
 var { corsWhitelist } = require('./lib/config/config.js');
+
 
 var app = express();
 var corsOptionsDelegate = function(req, callback) {
@@ -25,8 +27,10 @@ app.use(cors(corsOptionsDelegate)); // 解决跨域问题
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
+
 app.use(logger('dev'));
-app.use(express.json());
+app.use(bodyParser.json({limit: '100mb'}));
+app.use(express.json({limit: '100mb'}));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Class</title>
+    <style>
+        body{
+            background: #eaeaea; font-size:16px; line-height:1.5;
+        }
+        i {
+            font-style: normal;
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+
+<body>
+    
+
+<ul>
+
+    <li>
+        <a href="#1">Class 含义</a>
+    </li>
+
+    <li>
+        <a href="#2">Class 静态方法</a>
+    </li>
+
+</ul>
+
+<a href="javascript:void(0)">参考资料</a><br/>
+
+
+
+
+
+    <h3 id="1">一、Class 含义</h3>
+    <pre>
+        * 1、Class 具有constructor方法（即构造方法），不是必须的可以省略，会被默认添加
+        * 2、Class 的this关键字代表类的实例
+        * 3、ES6的Class可以看作是类的另一种写法
+        * 4、Class不存在变量提升
+    </pre>
+    <script>
+        class Person {
+            constructor(name,age,sex){
+                this.name=name;
+                this.age=age;
+                this.sex=sex;
+            }
+            sayHello (text) {
+                 console.log(`${this.name}今年${this.age},${text}`)
+            }
+        }
+        const student=new Person("小明",12,"男");
+        student.sayHello("学生");
+    </script>
+
+    <h3 id="2">二、Class 静态方法</h3>
+    <pre>
+        * 1、类相当于实例的原型，所有在类中定义的方法都会被实例继承。如果在一个方法前加上static关键字，那么该方法不会被类的实例集成，这种方法被称作静态方法
+        * 2、静态方法与非静态方法可以重名
+        * 3、静态方法可以被子类继承
+    </pre>
+    <script>
+        class Parent {
+            static sayHello(arg){
+                console.log(1,arg)
+            }
+            sayHello(arg){
+                console.log(2,arg)
+            }
+        }
+        Parent.sayHello("hello");
+        new Parent().sayHello("world");
+
+        class Son extends Parent{
+
+        }
+        Son.sayHello("son");
+        new Son().sayHello("son");
+    </script>
+</body>
+
+</html>

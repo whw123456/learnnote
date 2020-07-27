@@ -1,34 +1,41 @@
 @@include('../template/header.html',{
-    "title": "Async"
+"title": "Async"
 })
+
 <body>
     @@include('../template/nav.html',{
-        "navArr":[
-            "async 含义",
-            "基本用法"
-        ],
-        "docsArr":[
-            
-        ]
+    "navArr":[
+    "async 含义",
+    "基本用法",
+    "await命令",
+    "使用注意点"
+    ],
+    "docsArr":[
+
+    ]
     })
 
     <h3 id="1">一、async 含义</h3>
     <pre>
-        1、async 是generator函数的语法糖，它内置执行器，不用自己实现thunk或promise
-        2、async 具有更好的语义，内置的await 较之于yield 具有更好的可读性
-        3、await后面可以是 Promise 对象和原始类型的值（会被转换为立即 resolved 的Promise对象）
-        4、async的返回值是一个promise对象
+        * 1、async 是generator函数的语法糖，它内置执行器，不用自己实现thunk或promise
+        * 2、async 具有更好的语义，内置的await 较之于yield 具有更好的可读性
+        * 3、await后面可以是 Promise 对象和原始类型的值（会被转换为立即 resolved 的Promise对象）
+        * 4、async的返回值是一个promise对象
     </pre>
     <script>
-    
+
     </script>
 
     <h3 id="2">二、基本用法</h3>
     <pre>
-        1、async返回一个promise，一旦遇到await语句就会先返回，等到异步操作完成，继续执行后面的语句
-        2、async函数返回的promise壳子作为await的参数
-    </pre>
-    <script>
+        * 1、async返回一个promise，一旦遇到await语句就会先返回，等到异步操作完成，继续执行后面的语句
+        * 2、async函数返回的promise可以作为await的参数
+        * 3、async函数有多种使用形式
+        * 4、async内部函数的return语句会成为then方法回调函数的参数
+        * 5、async函数内部抛出的错误会导致promise状态变为reject，被promise的catch方法捕获 
+        * 6、async函数返回的promise对象必须等到所有await命令后的promise执行完状态才会改变除非遇到return或者抛出错误
+
+        <i>//async返回一个promise，一旦遇到await语句就会先返回，等到异步操作完成，继续执行后面的语句</i>
         async function run(){
             let dede= new Promise(function(resolve,reject){
                 setTimeout(()=>{
@@ -47,7 +54,375 @@
             console.log(res)
         })
 
+        <i>//async函数返回的promise可以作为await的参数</i>
+        async function timeOut(){
+            const step1=await new Promise(function(resolve,reject){
+                setTimeout(()=>{
+                    resolve(10)
+                },2000)
+            })
+            return step1;
+        }
+        async function run (){
+            const step1=await timeOut();
+            const step2=await new Promise(function(resolve,reject){
+                setTimeout(()=>{
+                    resolve(step1+10)
+                },1000)
+            })
+            return step2;
+        }
+        run().then(res=>{
+            console.log(res)
+        })
+
+        <i>//async函数的多种使用形式</i>
+        //函数声明
+        async function run() {}
+
+        //函数表达式
+        const run =async function(){}
+
+        //对象中使用
+        const obj={
+            run:async function(){
+                alert(1)
+            }
+        }
+        const obj={
+            async run(){
+                alert(2)
+            }
+        }
+        obj.run()
+
+        //Class中使用
+        class Run{
+            constructor(){ 
+                this.step1=1
+            }
+            async goStep() {
+                console.log(this.step1)
+                return this.step1;
+            }
+        }
+        const run=new Run();
+        run.goStep()
+
+        //箭头函数
+        const run=async ()=>{
+            alert(1)
+        }
+        run();
+
+        <i>//async函数内部抛出的错误会导致promise状态变为reject，被promise的catch方法捕获 </i>
+        async function run (){
+            throw new Error("出错了")
+        }
+        run().then(res=>{
+            console.log(res)
+        }).catch(err=>{
+            console.log(err)
+        })
+    </pre>
+    <script>
+        // // async返回一个promise，一旦遇到await语句就会先返回，等到异步操作完成，继续执行后面的语句
+        // async function run(){
+        //     let dede= new Promise(function(resolve,reject){
+        //         setTimeout(()=>{
+        //             resolve(10)
+        //         },1000)
+        //     });
+        //     console.log(dede)
+        //     let dedede=await new Promise(function(resolve,reject){
+        //         setTimeout(()=>{
+        //             resolve(dede+10)
+        //         },1000)
+        //     });
+        //     return dedede;
+        // }
+        // run().then(res=>{
+        //     console.log(res)
+        // })
+
+        // //async函数返回的promise可以作为await的参数
+        // async function timeOut(){
+        //     const step1=await new Promise(function(resolve,reject){
+        //         setTimeout(()=>{
+        //             resolve(10)
+        //         },2000)
+        //     })
+        //     return step1;
+        // }
+        // async function run (){
+        //     const step1=await timeOut();
+        //     const step2=await new Promise(function(resolve,reject){
+        //         setTimeout(()=>{
+        //             resolve(step1+10)
+        //         },1000)
+        //     })
+        //     return step2;
+        // }
+        // run().then(res=>{
+        //     console.log(res)
+        // })
+
+        //async函数的多种使用形式
+        // //函数声明
+        // async function run() {}
+        // //函数表达式
+        // const run =async function(){}
+        // //对象中使用
+        // const obj={
+        //     run:async function(){
+        //         alert(1)
+        //     }
+        // }
+        // const obj={
+        //     async run(){
+        //         alert(2)
+        //     }
+        // }
+        // obj.run()
+        // //Class中使用
+        // class Run{
+        //     constructor(){
+        //         this.step1=1
+        //     }
+        //     async goStep() {
+        //         console.log(this.step1)
+        //         return this.step1;
+        //     }
+        // }
+        // const run=new Run();
+        // run.goStep()
+        // //箭头函数
+        // const run=async ()=>{
+        //     alert(1)
+        // }
+        // run();
+
+        // async function run (){
+        //     throw new Error("出错了")
+        // }
+        // run().then(res=>{
+        //     console.log(res)
+        // }).catch(err=>{
+        //     console.log(err)
+        // })
+    </script>
+
+    <h3 id="3">三、await命令</h3>
+    <pre>
+        * 1、await命令后面是一个promise对象时返回promise对象的结果，若果不是promise，则直接返回对应的值
+        * 2、await命令后面是thenable对象，等同于promise对象
+        * 3、任何一个await命令的promise状态变为reject，那么整个async函数都会中断执行，除非错误被内部捕获
+
+        <i>//await命令后面是一个promise对象时返回promise对象的结果，若果不是promise，则直接返回对应的值</i>
+        //52143
+        async function run1() {
+            return await new Promise(function(resolve,reject){
+                resolve(1);
+            })
+        }
+        async function run2() {
+            return await 2;
+        }
+        function run3(){
+            setTimeout(()=>console.log(3))
+        }
+        async function run4(){
+            return await Promise.resolve(4)
+        }
+        function run5(){
+            console.log(5)
+        }
+
+        run1().then(res=>{
+            console.log(res)
+        })
+        run2().then(res=>{
+            console.log(res)
+        })
+        run3();
+        run4().then(res=>{
+            console.log(res)
+        })
+        run5()
+
+        <i>//await命令后面是thenable对象，等同于promise对象</i>
+        class Sleep{
+            constructor(time){
+                this.time=time
+            }
+            then(resolve,reject){
+                const startTime=Date.now();
+                setTimeout(()=>{
+                    resolve(Date.now()-startTime)
+                },this.time)
+            }
+        }
+        async function run(){
+            return await new Sleep(1000);
+        }
+        run().then(res=>{
+            console.log(res)
+        })
+
+        <i>//借助await让程序停顿指定时间</i>
+        function sleep(time){
+            return function(cb){
+                return new Promise(function(resolve,reject){
+                    setTimeout(()=>{
+                        cb.call(this)
+                        resolve()
+                    },time)
+                })
+            }
+        }
+        async function run (){
+            let step=sleep(1000);
+            for(let i=0; i<10;i++){
+                await step(()=>{
+                    console.log(i)
+                })
+            }
+        }
+        run()
+
+        <i>//任何一个await命令的promise状态变为reject，那么整个async函数都会中断执行，除非错误被内部捕获</i>
+        async function run() { 
+            //内部捕获了错误所以会执行后面的await，async函数的报错机制基本和promise的错误机制相同
+            await Promise.reject(new Error("出错了")).catch(err=>{
+                console.log("内部捕获了",err)
+            });
+            //try catch 捕获了
+            try{
+                let dede= await Promise.reject("dede")
+            }catch(err){
+                console.log("try...catch捕获",err)
+            }
+            //外部catch方法捕获 错误被抛出中断执行
+            console.log(dede)
+            //没人捕获会直接报错中断执行
+            throw new Error("没人捕获的错误")
+
+            return await Promise.resolve("成功了");
+        }
+        run().then(res=>{
+            console.log(res)
+        }).catch(err=>{
+            console.log(err)
+        })
+    </pre>
+    <script>
+        // //await命令后面是一个promise对象时返回promise对象的结果，若果不是promise，则直接返回对应的值
+        // //52143
+        // async function run1() {
+        //     return await new Promise(function(resolve,reject){
+        //         resolve(1);
+        //     })
+        // }
+        // async function run2() {
+        //     return await 2;
+        // }
+        // function run3(){
+        //     setTimeout(()=>console.log(3))
+        // }
+        // async function run4(){
+        //     return await Promise.resolve(4)
+        // }
+        // function run5(){
+        //     console.log(5)
+        // }
+
+        // run1().then(res=>{
+        //     console.log(res)
+        // })
+        // run2().then(res=>{
+        //     console.log(res)
+        // })
+        // run3();
+        // run4().then(res=>{
+        //     console.log(res)
+        // })
+        // run5()
+       
+        // //await命令后面是thenable对象，等同于promise对象
+        // class Sleep{
+        //     constructor(time){
+        //         this.time=time
+        //     }
+        //     then(resolve,reject){
+        //         const startTime=Date.now();
+        //         setTimeout(()=>{
+        //             resolve(Date.now()-startTime)
+        //         },this.time)
+        //     }
+        // }
+        // async function run(){
+        //     return await new Sleep(1000);
+        // }
+        // run().then(res=>{
+        //     console.log(res)
+        // })
+
+        //借助await让程序停顿指定时间
+        function sleep(time){
+            return function(cb){
+                return new Promise(function(resolve,reject){
+                    setTimeout(()=>{
+                        cb.call(this)
+                        resolve()
+                    },time)
+                })
+            }
+        }
+        async function run (){
+            let step=sleep(1000);
+            for(let i=0; i<10;i++){
+                await step(()=>{
+                    console.log(i)
+                })
+            }
+        }
+        run()
         
+        // //任何一个await命令的promise状态变为reject，那么整个async函数都会中断执行，除非错误被内部捕获
+        // async function run() { 
+        //     //内部捕获了错误所以会执行后面的await，async函数的报错机制基本和promise的错误机制相同
+        //     await Promise.reject(new Error("出错了")).catch(err=>{
+        //         console.log("内部捕获了",err)
+        //     });
+        //     //try catch 捕获了
+        //     try{
+        //         let dede= await Promise.reject("dede")
+        //     }catch(err){
+        //         console.log("try...catch捕获",err)
+        //     }
+        //     //外部catch方法捕获 错误被抛出中断执行
+        //     console.log(dede)
+        //     //没人捕获会直接报错中断执行
+        //     throw new Error("没人捕获的错误")
+
+        //     return await Promise.resolve("成功了");
+        // }
+        // run().then(res=>{
+        //     console.log(res)
+        // }).catch(err=>{
+        //     console.log(err)
+        // })
+    </script>
+
+    <h3 id="4">四、使用注意点</h3>
+    <pre>
+        * 1、await命令后的promise状态可能会是reject状态，所以最好把所有await语句都放到try...catch中执行
+        * 2、多个await命令后的异步操作，瑞国不存在继发关系最好让他们同时触发
+        * 3、await命令只能在async函数中使用，否则会报错
+    </pre>
+    <script>
+    
     </script>
 </body>
+
 </html>

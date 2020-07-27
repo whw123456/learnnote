@@ -6,22 +6,42 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
+    "babel-plugin-transform-remove-strict-mode": "0.0.2",
+    "body-parser": "^1.19.0",
+    "browserify": "^16.5.0",
     "cookie-parser": "~1.4.3",
     "cors": "^2.8.5",
+    "csvjson-csv2json": "^5.0.6",
     "debug": "~2.6.9",
+    "ejs": "^3.0.1",
+    "exceljs": "^3.4.0",
     "express": "~4.16.0",
     "express-http-proxy": "^1.5.1",
     "gulp-htmlmin": "^5.0.1",
     "http-errors": "~1.6.2",
     "jade": "~1.11.0",
-    "morgan": "~1.9.0"
+    "morgan": "~1.9.0",
+    "pyfl": "^1.1.4",
+    "request": "^2.88.0",
+    "transliteration": "^2.1.7",
+    "tsify": "^4.0.1",
+    "typescript": "^3.6.2",
+    "vinyl-source-stream": "^2.0.0",
+    "xlsx-to-json-lc": "^0.5.0"
   },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babelify": "^8.0.0",
     "del": "^5.0.0",
     "gulp": "^4.0.2",
     "gulp-file-include": "^2.1.0",
     "gulp-nodemon": "^2.4.2",
     "gulp-plumber": "^1.2.1",
-    "gulp-util": "^3.0.8"
+    "gulp-sourcemaps": "^2.6.5",
+    "gulp-util": "^3.0.8",
+    "vinyl-buffer": "^1.0.1"
   }
 }
